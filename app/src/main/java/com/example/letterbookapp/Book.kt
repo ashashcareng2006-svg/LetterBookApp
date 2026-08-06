@@ -7,6 +7,15 @@ data class BookSearchResponse(
     @SerializedName("docs") val books: List<BookDoc>? = emptyList()
 )
 
+data class RatingResponse(
+    @SerializedName("summary") val summary: RatingSummary?
+)
+
+data class RatingSummary(
+    @SerializedName("average") val average: Float?,
+    @SerializedName("count") val count: Int?
+)
+
 data class BookDoc(
     @SerializedName("key") val key: String? = "",
     @SerializedName("title") val title: String? = "Untitled",
@@ -40,3 +49,10 @@ data class BookDetailResponse(
             else -> "No description available for this book."
         }
     }
+
+data class UserReview(
+    val bookKey: String,
+    val bookTitle: String,
+    val rating: Float,
+    val comment: String? = null
+)

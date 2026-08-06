@@ -43,6 +43,11 @@ interface OpenLibraryApi {
     suspend fun getBookDetails(
         @Path("workId") workId: String
     ): BookDetailResponse
+
+    @GET("works/{workId}/ratings.json")
+    suspend fun getBookRatings(
+        @Path("workId") workId: String
+    ): RatingResponse
 }
 
 object RetrofitInstance {

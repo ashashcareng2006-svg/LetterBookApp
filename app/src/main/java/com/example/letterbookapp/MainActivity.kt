@@ -26,12 +26,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +43,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.letterbookapp.ui.theme.LetterBookAppTheme
 
@@ -52,7 +61,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    BookAppNavigation()
+                    MainAppScreen()
                 }
             }
         }
@@ -60,19 +69,96 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BookAppNavigation(
+fun MainAppScreen(
     viewModel: BookViewModel = viewModel()
 ) {
-    val selectedBook = viewModel.selectedBook
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    if (selectedBook != null) {
-        BookDetailScreen(
-            book = selectedBook,
-            description = viewModel.bookDescription,
-            onBackClick = { viewModel.clearSelectedBook() }
+    val navItems = listOf(
+        Screen.Home,
+        Screen.Search,
+        Screen.Library,
+        Screen.Profile
+    )
+
+    Scaffold(
+        bottomBar = {
+            // Hide the bottom bar if looking at a book detail screen
+            if (viewModel.selectedBook == null) {
+                NavigationBar {
+                    navItems.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = screen.title) },
+                            label = { Text(screen.title) },
+                            selected = currentRoute == screen.route,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        // If a book is selected globally, show the BookDetailScreen over the active destination
+        val selectedBook = viewModel.selectedBook
+
+        if (selectedBook != null) {
+            Box(modifier = Modifier.padding(innerPadding)) {
+                BookDetailScreen(
+                    book = selectedBook,
+                    description = viewModel.bookDescription ?: "No description available.",
+                    averageRating = viewModel.averageRating,
+                    ratingCount = viewModel.ratingCount,
+                    isInLibrary = viewModel.isBookInLibrary(selectedBook),
+                    onBackClick = { viewModel.clearSelectedBook() },
+                    onAddToLibraryClick = { viewModel.toggleAddToLibrary(selectedBook) },
+                    onSubmitReview = { rating, comment ->
+                        viewModel.addReview(selectedBook, rating, comment)
+                    }
+                )
+            }
+        } else {
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Home.route,
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                composable(Screen.Home.route) {
+                    HomeScreen(viewModel = viewModel)
+                }
+                composable(Screen.Search.route) {
+                    BookSearchScreen(viewModel = viewModel)
+                }
+                composable(Screen.Library.route) {
+                    LibraryScreen(viewModel = viewModel)
+                }
+                composable(Screen.Profile.route) {
+                    ProfileScreen(viewModel = viewModel)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeScreen(viewModel: BookViewModel) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Welcome to LetterBookApp Home!",
+            style = MaterialTheme.typography.headlineSmall
         )
-    } else {
-        BookSearchScreen(viewModel = viewModel)
     }
 }
 
@@ -81,71 +167,66 @@ fun BookSearchScreen(
     modifier: Modifier = Modifier,
     viewModel: BookViewModel = viewModel()
 ) {
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "LetterBookApp",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "LetterBookApp",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
 
-            // Search Section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = viewModel.searchQuery,
-                    onValueChange = { viewModel.onQueryChange(it) },
-                    label = { Text("Search by title or author") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { viewModel.searchBooks() }
-                    )
+        // Search Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = viewModel.searchQuery,
+                onValueChange = { viewModel.onQueryChange(it) },
+                label = { Text("Search by title or author") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { viewModel.searchBooks() }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { viewModel.searchBooks() },
-                    modifier = Modifier.height(56.dp)
-                ) {
-                    Text("Search")
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { viewModel.searchBooks() },
+                modifier = Modifier.height(56.dp)
+            ) {
+                Text("Search")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        when (val state = viewModel.uiState) {
+            is BookUiState.Initial -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Search for a book above to get started!")
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // State Display
-            when (val state = viewModel.uiState) {
-                is BookUiState.Initial -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Search for a book above to get started!")
-                    }
+            is BookUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-                is BookUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+            }
+            is BookUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = state.message, color = MaterialTheme.colorScheme.error)
                 }
-                is BookUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = state.message, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                is BookUiState.Success -> {
-                    // Explicit type specified to fix 'Cannot infer type for value parameter book'
-                    BookResultsList(
-                        books = state.books,
-                        onBookClick = { book: BookDoc -> viewModel.selectBook(book) }
-                    )
-                }
+            }
+            is BookUiState.Success -> {
+                BookResultsList(
+                    books = state.books,
+                    onBookClick = { book: BookDoc -> viewModel.selectBook(book) }
+                )
             }
         }
     }
@@ -169,7 +250,6 @@ fun BookResultsList(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Explicit type specified for loop variable
                 items(books.take(5)) { book: BookDoc ->
                     FeaturedBookCard(
                         book = book,
@@ -185,7 +265,6 @@ fun BookResultsList(
             )
         }
 
-        // Explicit type specified for loop variable
         items(books) { book: BookDoc ->
             BookItemCard(
                 book = book,
