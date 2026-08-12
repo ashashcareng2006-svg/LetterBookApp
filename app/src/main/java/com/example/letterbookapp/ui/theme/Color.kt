@@ -2,10 +2,16 @@ package com.example.letterbookapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Light Theme Colors
+val ForestGreen = Color(0xFF2E7D32) // Primary branding, buttons
+val SageGreen = Color(0xFF81C784)   // Secondary elements
+val MintCream = Color(0xFFF1F8E9)   // App background (soft on the eyes)
+val SurfaceWhite = Color(0xFFFFFFFF)// Cards and dialogs
+val EarthBrown = Color(0xFFA1887F)  // Warm tertiary accent for book details
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Dark Theme Colors
+val LightMint = Color(0xFFA5D6A7)   // Primary for dark mode (pops against dark bg)
+val DeepForest = Color(0xFF1B5E20)  // Secondary elements
+val DarkGreenBg = Color(0xFF0A120A) // Very deep green/black for background
+val DarkGreenSurface = Color(0xFF142115) // Slightly lighter for cards
+val SandAccent = Color(0xFFD7CCC8)  // Warm tertiary accent

@@ -1,7 +1,10 @@
 package com.example.letterbookapp
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
@@ -28,9 +32,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -43,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
@@ -54,6 +61,7 @@ fun BookDetailScreen(
     averageRating: Float?,
     ratingCount: Int?,
     isInLibrary: Boolean = false,
+    isReadLater: Boolean = false,
     onBackClick: () -> Unit,
     onAddToLibraryClick: () -> Unit = {},
     onReadLaterClick: () -> Unit = {},
@@ -64,13 +72,16 @@ fun BookDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Book Details") },
+                title = { },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Text(
                             text = "←",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -82,11 +93,11 @@ fun BookDetailScreen(
                             tint = if (isInLibrary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    // 2. Bookmark / Read Later Icon (will show on profile later)
                     IconButton(onClick = onReadLaterClick) {
                         Icon(
-                            imageVector = Icons.Default.BookmarkBorder,
-                            contentDescription = "Read Later"
+                            imageVector = if (isReadLater) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = if (isReadLater) "Remove Bookmark" else "Read Later",
+                            tint = if (isReadLater) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -97,40 +108,55 @@ fun BookDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            AsyncImage(
-                model = book.largeCoverUrl ?: book.coverUrl,
-                contentDescription = book.title,
+            // Immersive Cover Background Block
+            Box(
                 modifier = Modifier
-                    .width(180.dp)
-                    .height(260.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+                    )
+                    .padding(bottom = 32.dp, top = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    elevation = CardDefaults.cardElevation(16.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    AsyncImage(
+                        model = book.largeCoverUrl ?: book.coverUrl,
+                        contentDescription = book.title,
+                        modifier = Modifier
+                            .width(180.dp)
+                            .height(260.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
                 text = book.title ?: "Untitled",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "By ${book.primaryAuthor}",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Centered Rating and Published cards
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -140,84 +166,84 @@ fun BookDetailScreen(
                     title = if (ratingCount != null && ratingCount > 0) "Rating ($ratingCount)" else "Rating",
                     value = averageRating?.let { "%.1f ★".format(it) } ?: "N/A"
                 )
-
                 Spacer(modifier = Modifier.width(16.dp))
-
                 DetailInfoCard(
                     title = "Published",
                     value = book.publishYear?.toString() ?: "N/A"
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Wide Block: Rate or leave a review button
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showReviewDialog = true },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)) {
+
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                        .clickable { showReviewDialog = true },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Review",
-                        tint = Color(0xFFFFB800)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Rate or leave a review",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Review",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Rate or leave a review",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Description",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = description ?: "Loading description...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.3f
                 )
+                Spacer(modifier = Modifier.height(32.dp)) // Bottom padding
             }
         }
     }
 
-    // 4. Review Window / Dialog Popup
     if (showReviewDialog) {
         var userRating by remember { mutableFloatStateOf(5f) }
         var userComment by remember { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = { showReviewDialog = false },
-            title = { Text("Write a Review") },
+            title = { Text("Write a Review", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "Rating: ${userRating.toInt()} ★")
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Rating: ${userRating.toInt()} ★", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // Simple interactive star row or rating picker simulation
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxWidth()
@@ -227,7 +253,8 @@ fun BookDetailScreen(
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = "$i stars",
-                                    tint = if (i <= userRating) Color(0xFFFFB800) else Color.Gray
+                                    tint = if (i <= userRating) Color(0xFFFFB800) else Color.LightGray,
+                                    modifier = Modifier.size(32.dp)
                                 )
                             }
                         }
@@ -240,7 +267,8 @@ fun BookDetailScreen(
                         onValueChange = { userComment = it },
                         label = { Text("Optional comment") },
                         modifier = Modifier.fillMaxWidth(),
-                        maxLines = 4
+                        maxLines = 4,
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
             },
@@ -269,23 +297,26 @@ private fun DetailInfoCard(
     value: String
 ) {
     Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.width(120.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

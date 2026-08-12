@@ -48,7 +48,7 @@ data class BookDetailResponse(
             is Map<*, *> -> descriptionRaw["value"]?.toString() ?: "No description available."
             else -> "No description available for this book."
         }
-    }
+}
 
 data class UserReview(
     val bookKey: String,

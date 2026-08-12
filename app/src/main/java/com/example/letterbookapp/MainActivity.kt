@@ -22,7 +22,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,7 +33,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,8 +44,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -85,14 +93,23 @@ fun MainAppScreen(
 
     Scaffold(
         bottomBar = {
-            // Hide the bottom bar if looking at a book detail screen
             if (viewModel.selectedBook == null) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
                     navItems.forEach { screen ->
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = screen.title) },
-                            label = { Text(screen.title) },
+                            label = { Text(screen.title, fontWeight = FontWeight.SemiBold) },
                             selected = currentRoute == screen.route,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
                             onClick = {
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -108,7 +125,6 @@ fun MainAppScreen(
             }
         }
     ) { innerPadding ->
-        // If a book is selected globally, show the BookDetailScreen over the active destination
         val selectedBook = viewModel.selectedBook
 
         if (selectedBook != null) {
@@ -119,8 +135,10 @@ fun MainAppScreen(
                     averageRating = viewModel.averageRating,
                     ratingCount = viewModel.ratingCount,
                     isInLibrary = viewModel.isBookInLibrary(selectedBook),
+                    isReadLater = viewModel.isBookInReadLater(selectedBook),
                     onBackClick = { viewModel.clearSelectedBook() },
                     onAddToLibraryClick = { viewModel.toggleAddToLibrary(selectedBook) },
+                    onReadLaterClick = { viewModel.toggleReadLater(selectedBook) },
                     onSubmitReview = { rating, comment ->
                         viewModel.addReview(selectedBook, rating, comment)
                     }
@@ -132,18 +150,10 @@ fun MainAppScreen(
                 startDestination = Screen.Home.route,
                 modifier = Modifier.padding(innerPadding)
             ) {
-                composable(Screen.Home.route) {
-                    HomeScreen(viewModel = viewModel)
-                }
-                composable(Screen.Search.route) {
-                    BookSearchScreen(viewModel = viewModel)
-                }
-                composable(Screen.Library.route) {
-                    LibraryScreen(viewModel = viewModel)
-                }
-                composable(Screen.Profile.route) {
-                    ProfileScreen(viewModel = viewModel)
-                }
+                composable(Screen.Home.route) { HomeScreen(viewModel = viewModel) }
+                composable(Screen.Search.route) { BookSearchScreen(viewModel = viewModel) }
+                composable(Screen.Library.route) { LibraryScreen(viewModel = viewModel) }
+                composable(Screen.Profile.route) { ProfileScreen(viewModel = viewModel) }
             }
         }
     }
@@ -156,8 +166,10 @@ fun HomeScreen(viewModel: BookViewModel) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Welcome to LetterBookApp Home!",
-            style = MaterialTheme.typography.headlineSmall
+            text = "Welcome to LetterBookApp!",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -170,16 +182,17 @@ fun BookSearchScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
-            text = "LetterBookApp",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "Discover",
+            style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 12.dp)
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(bottom = 16.dp, top = 8.dp)
         )
 
-        // Search Section
+        // Modern Pill-Shaped Search Section
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -187,34 +200,33 @@ fun BookSearchScreen(
             OutlinedTextField(
                 value = viewModel.searchQuery,
                 onValueChange = { viewModel.onQueryChange(it) },
-                label = { Text("Search by title or author") },
+                placeholder = { Text("Search title, author...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                 singleLine = true,
+                shape = RoundedCornerShape(50), // Fully rounded corners
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { viewModel.searchBooks() }
-                )
+                keyboardActions = KeyboardActions(onSearch = { viewModel.searchBooks() })
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { viewModel.searchBooks() },
-                modifier = Modifier.height(56.dp)
-            ) {
-                Text("Search")
-            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         when (val state = viewModel.uiState) {
             is BookUiState.Initial -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Search for a book above to get started!")
+                    Text("Find your next great read.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             is BookUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
             is BookUiState.Error -> {
@@ -238,17 +250,18 @@ fun BookResultsList(
     onBookClick: (BookDoc) -> Unit
 ) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(vertical = 8.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)
     ) {
         item {
             Text(
                 text = "Featured Selection",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(books.take(5)) { book: BookDoc ->
                     FeaturedBookCard(
@@ -257,10 +270,11 @@ fun BookResultsList(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "All Results",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
@@ -282,26 +296,30 @@ fun FeaturedBookCard(
     Card(
         onClick = onClick,
         modifier = Modifier
-            .width(120.dp)
-            .height(180.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .width(130.dp)
+            .height(200.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column {
             AsyncImage(
                 model = book.coverUrl,
                 contentDescription = book.title,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(110.dp)
-                    .clip(RoundedCornerShape(6.dp)),
+                    .height(140.dp),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = book.title ?: "Untitled",
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 2
-            )
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text(
+                    text = book.title ?: "Untitled",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -314,7 +332,9 @@ fun BookItemCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
             modifier = Modifier
@@ -326,26 +346,40 @@ fun BookItemCard(
                 model = book.coverUrl,
                 contentDescription = book.title,
                 modifier = Modifier
-                    .size(width = 60.dp, height = 90.dp)
-                    .clip(RoundedCornerShape(4.dp)),
+                    .size(width = 70.dp, height = 100.dp)
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = book.title ?: "Untitled",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Author: ${book.primaryAuthor}",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = book.primaryAuthor,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 book.publishYear?.let { year ->
-                    Text(
-                        text = "Published: $year",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "$year",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
         }
